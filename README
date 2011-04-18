@@ -17,14 +17,14 @@ Create example.rb and put it in the www-root:
 
 	puts 'Hi!'
 
-And that's all! Go to http://location/of/www-root/example.rb and see the result.
+That's all! Go to http://location/of/www-root/example.rb and see the result.
 More complex example:
 
 	require 'cgi'
 	cgi.print(cgi.header)
 	cgi.print('<h1>Hi!</h1>')
 
-This fcgi handler will:
+This fcgi handler can:
 
 * Reload script if you change it
 * Send Content-Type header if you forgot to send it
