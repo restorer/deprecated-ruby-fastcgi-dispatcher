@@ -28,7 +28,7 @@ This fcgi handler can:
 
 * Reload script if you change it
 * Send Content-Type header if you forgot to send it
-* Show exceptions
+* Show pretty exceptions
 
 Warning
 -------
