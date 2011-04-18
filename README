@@ -27,7 +27,7 @@ More complex example:
 This fcgi handler will:
 
 * Reload script if you change it
-* Send Content-Type header if you forgot to sent it
+* Send Content-Type header if you forgot to send it
 * Show exceptions
 
 Warning
@@ -54,7 +54,7 @@ don't forget to add LoadModule / SocketPath / SharememPath / etc
 		".rb" => ((
 			"bin-path" => "/path/to/ruby-cgi",
 			"socket" => "/tmp/ruby.socket",
-			"max-procs" => consult_lighttpd_documentation_and_set_appripriate_value,
+			"max-procs" => consult_lighttpd_documentation_and_set_appropriate_value,
 			"idle-timeout" => 20,
 			"kill-signal" => 10, # SIGUSR1, use "kill -l" to find value for your system
 			"bin-copy-environment" => (
