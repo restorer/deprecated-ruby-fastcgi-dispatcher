@@ -1,0 +1,123 @@
+#!/usr/bin/ruby
+
+##
+## Author: Slava Tretyak (restorer@zame-dev.org)
+## URL: https://github.com/restorer/Ruby-FastCGI-Dispatcher
+## Updated: 2011-04-18
+##
+
+# use ruby fcgi implementation, because C library didn't support graceful exit on SIGUSR1
+FCGI_PURE_RUBY = true
+
+require 'rubygems'
+require 'fcgi'
+require 'stringio'
+
+class FCGIDispatcher
+	MAX_REQUESTS = 256
+
+	def self.get_error_string(cgi, message)
+		cgi.header('text/plain') + message
+	end
+
+	def self.get_exception_string(cgi, ex, output=nil)
+		message = "[[ #{ex.class} ]]\n\n#{ex.to_s}\n\n" + ex.backtrace.join("\n")
+		message += "\n\n[[ Output ]]\n\n#{output}" if output && !output.empty?
+
+		get_error_string(cgi, message)
+	end
+
+	def self.load_script(path, in_require=false)
+		raise Exception.new('Invalid path "' + path.to_s + '"') if path.nil? || path.empty? || !File.exists?(path)
+
+		stat = File.stat(path)
+		raise Exception.new('Can\'t access "' + path.to_s + '"') unless stat.readable?
+
+		Dir.chdir(File.dirname(path)) unless in_require
+
+		@loaded_scripts[path] = true
+		load(path, !in_require)
+	end
+
+	def self.dispatch_cgi(cgi)
+		old_stdout = $stdout
+		old_stderr = $stderr
+		output_buffer = StringIO.new()
+
+		$stdout = output_buffer
+		$stderr = output_buffer
+		output = nil
+
+		old_env = {}
+		ENV.each_pair { |k, v| old_env[k] = v }
+
+		ENV.clear
+		cgi.env_table.each_pair { |k, v| ENV[k] = v }
+
+		avail_constants = Module.constants
+		@loaded_scripts = {}
+		@catch_require = true
+
+		begin
+			load_script(cgi.env_table['SCRIPT_FILENAME'])
+
+			output_buffer.rewind
+			output = output_buffer.read
+			header_idx = output.index("\n\n") || output.index("\r\n\r\n")
+
+			unless header_idx && (output[0, header_idx] =~ /^content-type:/i)
+				output = cgi.header('text/plain') + output
+			end
+		rescue Exception => ex
+			output_buffer.rewind
+			output = get_exception_string(cgi, ex, output_buffer.read)
+		end
+
+		@catch_require = false
+		(Module.constants - avail_constants).each { |const| Object.module_exec { remove_const const } }
+
+		ENV.clear
+		old_env.each_pair { |k, v| ENV[k] = v }
+
+		$stdout = old_stdout
+		$stderr = old_stderr
+
+		cgi.print(output)
+	end
+
+	def self.dispatch
+		@dispatcher_mtime = File.stat(__FILE__).mtime
+		requests_count = 0
+
+		FCGI.each_cgi do |cgi|
+			dispatch_cgi(cgi)
+			requests_count += 1
+
+			Process.kill('SIGUSR1', Process.pid) if (requests_count > MAX_REQUESTS) || (@dispatcher_mtime < File.stat(__FILE__).mtime)
+		end
+	end
+
+	def self.require(path)
+		if @catch_require
+			real_path = path
+			real_path += '.rb' unless path =~ /\.rb$/
+
+			if File.exists?(real_path)
+				load_script(real_path, true)
+				return
+			end
+		end
+
+		fcgi_dispatcher_original_require(path)
+	end
+end
+
+module Kernel
+	alias :fcgi_dispatcher_original_require :require
+
+	def require(path)
+		FCGIDispatcher.require(path)
+	end
+end
+
+FCGIDispatcher.dispatch

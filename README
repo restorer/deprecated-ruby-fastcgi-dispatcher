@@ -1,0 +1,64 @@
+Ruby FastCGI Dispatcher
+=======================
+
+Author: Slava Tretyak (restorer@zame-dev.org)
+URL: https://github.com/restorer/Ruby-FastCGI-Dispatcher
+
+What is it?
+-----------
+
+Have you ever wanted to write a simple web-script in Ruby? Say, hello world.
+Even using mod_passenger and rack you must create create bunch of folders and configuration files.
+Too bad if you use lighttpd: you should create scripts to start/stop thin and setup lighttpd as reverse proxy.
+Don't you think that this is too much for a simple hello world?
+
+This FCGI handler allows you to write in Ruby just like in PHP.
+Create example.rb and put it in the www-root:
+
+	puts 'Hi!'
+
+And that's all! Go to http://location/of/www-root/example.rb and see the result.
+More complex example:
+
+	require 'cgi'
+	cgi.print(cgi.header)
+	cgi.print('<h1>Hi!</h1>')
+
+This fcgi handler will:
+
+* Reload script if you change it
+* Send Content-Type header if you forgot to sent it
+* Show exceptions
+
+Warning
+-------
+
+That this handler is not intended to use with complex applications, use rack/thin + mod_passenger/reverse proxy instead.
+
+Installation guide
+------------------
+
+### Apache2 + mod_fcgid (**not** mod_fastcgi)
+
+	IPCCommTimeout 40
+	IPCConnectTimeout 10
+	AddHandler fcgid-script .rb
+	FcgidWrapper /path/to/ruby-cgi .rb
+
+don't forget to add LoadModule / SocketPath / SharememPath / etc
+
+### Lighttpd
+
+	server.modules += ( "mod_fastcgi" )
+	fastcgi.server = (
+		".rb" => ((
+			"bin-path" => "/path/to/ruby-cgi",
+			"socket" => "/tmp/ruby.socket",
+			"max-procs" => consult_lighttpd_documentation_and_set_appripriate_value,
+			"idle-timeout" => 20,
+			"kill-signal" => 10, # SIGUSR1, use "kill -l" to find value for your system
+			"bin-copy-environment" => (
+				"PATH", "SHELL", "USER"
+			)
+		))
+	)
