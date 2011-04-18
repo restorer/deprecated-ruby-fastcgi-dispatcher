@@ -109,14 +109,14 @@ class FCGIDispatcher
 	end
 
 	def self.dispatch
-		@dispatcher_mtime = File.stat(__FILE__).mtime
+		dispatcher_mtime = File.stat(__FILE__).mtime
 		requests_count = 0
 
 		FCGI.each_cgi do |cgi|
 			dispatch_cgi(cgi)
 			requests_count += 1
 
-			Process.kill('SIGUSR1', Process.pid) if (requests_count > MAX_REQUESTS) || (@dispatcher_mtime < File.stat(__FILE__).mtime)
+			Process.kill('SIGUSR1', Process.pid) if (requests_count > MAX_REQUESTS) || (dispatcher_mtime < File.stat(__FILE__).mtime)
 		end
 	end
 
