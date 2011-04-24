@@ -77,7 +77,7 @@ class FCGIDispatcher
 		ENV.clear
 		cgi.env_table.each_pair { |k, v| ENV[k] = v }
 
-		avail_constants = Module.constants
+		@avail_constants = Module.constants
 		@loaded_scripts = {}
 		@catch_require = true
 
@@ -97,7 +97,7 @@ class FCGIDispatcher
 		end
 
 		@catch_require = false
-		(Module.constants - avail_constants).each { |const| Object.module_exec { remove_const const } }
+		(Module.constants - @avail_constants).each { |const| Object.module_exec { remove_const const } }
 
 		ENV.clear
 		old_env.each_pair { |k, v| ENV[k] = v }
@@ -127,8 +127,13 @@ class FCGIDispatcher
 
 			if File.exists?(real_path)
 				load_script(real_path, true)
-				return
+			else
+				current_constants = Module.constants
+				fcgi_dispatcher_original_require(path)
+				@avail_constants += Module.constants - current_constants
 			end
+
+			return
 		end
 
 		fcgi_dispatcher_original_require(path)
