@@ -39,8 +39,12 @@ require 'stringio'
 class FCGIDispatcher
 	MAX_REQUESTS = 256
 
+	def self.get_cgi_header(cgi)
+		cgi.header('text/plain; charset=utf-8')
+	end
+
 	def self.get_error_string(cgi, message)
-		cgi.header('text/plain') + message
+		get_cgi_header(cgi) + message
 	end
 
 	def self.get_exception_string(cgi, ex, output=nil)
@@ -87,9 +91,23 @@ class FCGIDispatcher
 			output_buffer.rewind
 			output = output_buffer.read
 			header_idx = output.index("\n\n") || output.index("\r\n\r\n")
+			has_content_type = false
 
-			unless header_idx && (output[0, header_idx] =~ /^content-type:/i)
-				output = cgi.header('text/plain') + output
+			if header_idx
+				output[0, header_idx].gsub("\r\n", "\n").split("\n").each do |line|
+					mt = line.match(/^([a-z][a-z\-]*):\s*[^ ]/i)
+
+					if mt
+						has_content_type = true if mt[1].downcase == 'content-type'
+					else
+						has_content_type = false
+						break
+					end
+				end
+			end
+
+			unless has_content_type
+				output = get_cgi_header(cgi) + output
 			end
 		rescue Exception => ex
 			output_buffer.rewind
