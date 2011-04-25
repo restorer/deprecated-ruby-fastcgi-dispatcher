@@ -90,7 +90,7 @@ class FCGIDispatcher
 
 			output_buffer.rewind
 			output = output_buffer.read
-			header_idx = output.index("\n\n") || output.index("\r\n\r\n")
+			header_idx = output.index(/\r?\n\r?\n/)
 			has_content_type = false
 
 			if header_idx
